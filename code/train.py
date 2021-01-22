@@ -567,7 +567,13 @@ def train(labeled_trainloader, unlabeled_trainloader, model, optimizer, schedule
         inputs_u2 = inputs_u2.cuda()
         inputs_ori = inputs_ori.cuda()
 
-        out_u = [(de_flowgmm_lbls[idx.item()] if idx.item() in de_flowgmm_lbls else -1)  for idx in u_idxs]
+        out_u = [(de_flowgmm_lbls[idx.item()] if idx.item() in de_flowgmm_lbls else random.randint(0,9))  for idx in
+                 u_idxs]
+        out_u2 = [(ru_flowgmm_lbls[idx.item()] if idx.item() in ru_flowgmm_lbls else random.randint(0, 9)) for idx in
+                 u_idxs]
+        out_ori = [(ori_flowgmm_lbls[idx.item()] if idx.item() in ori_flowgmm_lbls else random.randint(0, 9)) for idx in
+                 u_idxs]
+
         for idx in u_idxs:
             print(idx.item())
         print("LAbels", len(de_flowgmm_lbls),de_flowgmm_lbls[420562], out_u)
@@ -575,16 +581,30 @@ def train(labeled_trainloader, unlabeled_trainloader, model, optimizer, schedule
 
         with torch.no_grad():
             # Predict labels for unlabeled data.
-            outputs_u = model(inputs_u)
-            outputs_u2 = model(inputs_u2)
-            outputs_ori = model(inputs_ori)
-            print("output:",type(outputs_u), outputs_u.shape, outputs_u)
+            #outputs_u = model(inputs_u)
+            #outputs_u2 = model(inputs_u2)
+            #outputs_ori = model(inputs_ori)
+            #print("output:",type(outputs_u), outputs_u.shape, outputs_u)
+            outputs = [[(1 if j ==i else 0) for j in range(10)] for i in out_u]
+            outputs = torch.FloatTensor(outputs)
+            print("output u:",outputs)
+            outputs_u = outputs.cuda()
+
+            outputs = [[(1 if j == i else 0) for j in range(10)] for i in out_u2]
+            outputs = torch.FloatTensor(outputs)
+            print("output u2:",outputs)
+            outputs_u2 = outputs.cuda()
+
+            outputs = [[(1 if j == i else 0) for j in range(10)] for i in out_ori]
+            outputs = torch.FloatTensor(outputs)
+            print("output ori:",outputs)
+            outputs_ori = outputs.cuda()
             # Based on translation qualities, choose different weights here.
             # For AG News: German: 1, Russian: 0, ori: 1
             # For DBPedia: German: 1, Russian: 1, ori: 1
             # For IMDB: German: 0, Russian: 0, ori: 1
             # For Yahoo Answers: German: 1, Russian: 0, ori: 1 / German: 0, Russian: 0, ori: 1
-            p = (0 * torch.softmax(outputs_u, dim=1) + 0 * torch.softmax(outputs_u2,
+            p = (1 * torch.softmax(outputs_u, dim=1) + 0 * torch.softmax(outputs_u2,
                                                                          dim=1) + 1 * torch.softmax(outputs_ori, dim=1)) / (1)
             # Do a sharpen here.
             pt = p**(1/args.T)
